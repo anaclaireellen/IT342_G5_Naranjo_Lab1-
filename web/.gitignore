@@ -1,0 +1,14 @@
+# React dependencies
+web/node_modules/
+web/build/
+
+# Java dependencies
+backend/target/
+.mvn/
+*.class
+
+# IDE files
+.vscode/
+.idea/
+.DS_Store
+node_modules
