@@ -1,17 +1,17 @@
-# TASK_CHECKLIST.md
+## ✅ DONE TASKS
 
-## DONE
-- [x] Backend: MySQL Database Connection setup [commit: insert_hash_here]
-- [x] Backend: User Entity and Repository implementation [commit: insert_hash_here]
-- [x] Backend: POST /api/auth/register with BCrypt [commit: insert_hash_here]
-- [x] Backend: POST /api/auth/login [commit: insert_hash_here]
-- [x] Backend: GET /api/user/me (Protected route) [commit: insert_hash_here]
+### 1️⃣ Mobile Application (Android Kotlin)
+- [x] Register screen with Role Selection (Student/Admin) | Hash: [8d8d1c4]
+- [x] Login screen with Backend Auth | Hash: [8d8d1c4]
+- [x] Dashboard/Profile screen (Protected) | Hash: [8d8d1c4]
+- [x] Logout functionality (Session clear + Redirect) | Hash: [8d8d1c4]
+- [x] Connection to Spring Boot Backend (10.0.2.2) | Hash: [8d8d1c4]
 
-## IN-PROGRESS
-- [ ] Web: Implementation of Login and Register pages
-- [ ] Web: Dashboard and Protected Routing logic
+### 2️⃣ Backend Finalization
+- [x] Consistent API responses for Mobile and Web | Hash: [8d8d1c4]
+- [x] Password Encryption (BCrypt) | Hash: [8d8d1c4]
+- [x] Role-based data handling | Hash: [8d8d1c4]
 
-## TODO
-- [ ] Web: Logout functionality
-- [ ] Docs: Update FRS PDF with Web UI Screenshots
-- [ ] Docs: Include finalized ERD in FRS
+### 3️⃣ Repository & Docs
+- [x] Organized folder structure (/web, /mobile, /backend, /docs) | Hash: [8d8d1c4]
+- [x] Updated FRS PDF with Web and Mobile screenshots | Hash: [8d8d1c4]
