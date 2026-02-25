@@ -1,19 +1,40 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, ArrowLeft } from 'lucide-react';
+import axios from 'axios';
 
 const Register = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ username: '', email: '', password: '', confirmPassword: '' });
   const colors = { maroon: '#8B4444', gold: '#C5A059', bg: '#F4F0F0' };
 
-  const handleRegister = (e) => {
-    e.preventDefault();
-    if (formData.password !== formData.confirmPassword) return alert("Passwords do not match");
-    console.log("Registering:", formData.username);
-    navigate('/login');
-  };
+  const handleRegister = async (e) => {
+  e.preventDefault();
+  
+  if (formData.password !== formData.confirmPassword) {
+    return alert("Passwords do not match");
+  }
 
+  try {
+    // We send exactly what your User.java model requires
+    const response = await axios.post('http://localhost:8080/api/register', {
+      username: formData.username,
+      email: formData.email,
+      password: formData.password,
+      role: 'STUDENT' // This sets the default role in the database
+    });
+
+    if (response.status === 200 || response.status === 201) {
+      alert("Registration Successful!");
+      navigate('/login');
+    }
+  } catch (error) {
+    // If the backend returns an error (like duplicate email), it shows here
+    const errorMsg = error.response?.data?.message || "Registration failed. Check backend console.";
+    alert(errorMsg);
+    console.error("Error details:", error.response?.data);
+  }
+};
   const inputStyle = { width: '100%', padding: '14px 14px 14px 45px', borderRadius: '12px', border: '1px solid #DCD0D0', background: '#FFF', color: '#2D2D2D', outline: 'none', boxSizing: 'border-box' };
 
   return (
