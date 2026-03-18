@@ -1,7 +1,10 @@
 package com.example.kin.controller;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -9,18 +12,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMethod;
 
 import com.example.kin.model.User;
 import com.example.kin.repository.UserRepository;
 
 @RestController
-@RequestMapping("/api")
-@CrossOrigin(origins = "http://localhost:3000") // Simplified
+@RequestMapping("/api/auth")
+@CrossOrigin(origins = "http://localhost:3000")
 public class AuthController {
 
     @Autowired
@@ -30,61 +33,98 @@ public class AuthController {
     private PasswordEncoder passwordEncoder;
 
     @PostMapping("/register")
-public ResponseEntity<?> register(@RequestBody User user) {
-    String authorizedDomain = "@cit.edu"; // You can change this easily later
+    public ResponseEntity<?> register(@RequestBody User user) {
+        String authorizedDomain = "@cit.edu";
 
-    // 1. Domain Validation
-    if (!user.getEmail().toLowerCase().endsWith(authorizedDomain)) {
-        return ResponseEntity.badRequest().body(Map.of(
-            "message", "Unauthorized domain. Please register using an official institutional email address."
-        ));
+        if (user.getEmail() == null || !user.getEmail().toLowerCase().endsWith(authorizedDomain)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Use @cit.edu email."));
+        }
+
+        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Email already exists."));
+        }
+
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        if (user.getRole() == null) {
+            user.setRole("STUDENT");
+        }
+
+        userRepository.save(user);
+        return ResponseEntity.ok(Map.of("message", "Registered successfully."));
     }
 
-    // 2. Duplicate Check
-    if (userRepository.findByEmail(user.getEmail()).isPresent()) {
-        return ResponseEntity.badRequest().body(Map.of(
-            "message", "The provided email address is already associated with an existing account."
-        ));
-    }
-
-    // 3. Success Flow
-    user.setPassword(passwordEncoder.encode(user.getPassword()));
-    user.setRole("STUDENT");
-    userRepository.save(user);
-    
-    return ResponseEntity.ok(Map.of(
-        "message", "Account registration completed successfully."
-    ));
-}
-
-   @PostMapping("/auth/login") // This path is /api/auth/login
+    @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         String password = request.get("password");
 
-        Optional<User> user = userRepository.findByEmail(email);
+        Optional<User> userOpt = userRepository.findByEmail(email);
 
-            if (user.isPresent() && passwordEncoder.matches(password, user.get().getPassword())) {
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            if (passwordEncoder.matches(password, user.getPassword())) {
                 return ResponseEntity.ok(Map.of(
-        "message", "Login successful",
-        "username", user.get().getUsername(), // This key "username" is what React sees
-        "role", user.get().getRole()
-    ));
-    
-}
-        return ResponseEntity.status(401).body(Map.of("message", "Invalid credentials"));
+                    "message", "Login successful",
+                    "username", user.getUsername(),
+                    "role", user.getRole(),
+                    "email", user.getEmail(),
+                    "profilePic", user.getProfilePic() != null ? user.getProfilePic() : ""
+                ));
+            }
+        }
+
+        return ResponseEntity.status(401).body(Map.of("message", "Invalid email or password"));
     }
 
-    @GetMapping("/user/me")
-    public ResponseEntity<?> getMe(@RequestHeader("Authorization") String token) {
-        // Protected route placeholder
-        return ResponseEntity.ok(Map.of("status", "Authenticated", "message", "Welcome back!"));
+    @GetMapping("/profiles")
+    public ResponseEntity<?> getProfiles(@RequestParam(required = false) List<String> usernames) {
+        if (usernames == null || usernames.isEmpty()) {
+            return ResponseEntity.ok(Collections.emptyList());
+        }
+
+        return ResponseEntity.ok(
+            userRepository.findByUsernameIn(usernames).stream().map(user -> Map.of(
+                "username", user.getUsername(),
+                "profilePic", user.getProfilePic() != null ? user.getProfilePic() : "",
+                "role", user.getRole() != null ? user.getRole() : ""
+            )).collect(Collectors.toList())
+        );
     }
 
-        @GetMapping("/users")
-    public ResponseEntity<?> getAllUsers() {
-        return ResponseEntity.ok(userRepository.findAll());
+    @PutMapping("/user/update")
+    public ResponseEntity<?> updateProfile(@RequestBody Map<String, String> updates) {
+        String email = updates.get("email");
+        User user = userRepository.findByEmail(email).orElse(null);
+
+        if (user == null) {
+            return ResponseEntity.status(404).body(Map.of("message", "User not found"));
+        }
+
+        String currentPassword = updates.get("currentPassword");
+        if (currentPassword == null || !passwordEncoder.matches(currentPassword, user.getPassword())) {
+            return ResponseEntity.status(401).body(Map.of("message", "Incorrect current password. Identity not verified."));
+        }
+
+        if (updates.containsKey("username")) {
+            String newUsername = updates.get("username");
+            if (!newUsername.equals(user.getUsername())) {
+                if (userRepository.existsByUsername(newUsername)) {
+                    return ResponseEntity.status(400).body(Map.of("message", "Username '" + newUsername + "' is already taken."));
+                }
+                user.setUsername(newUsername);
+            }
+        }
+
+        if (updates.containsKey("profilePic")) {
+            user.setProfilePic(updates.get("profilePic"));
+        }
+
+        String newPassword = updates.get("newPassword");
+        if (newPassword != null && !newPassword.trim().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(newPassword));
+        }
+
+        userRepository.save(user);
+        return ResponseEntity.ok(Map.of("message", "Profile updated successfully!"));
     }
-
-
 }
