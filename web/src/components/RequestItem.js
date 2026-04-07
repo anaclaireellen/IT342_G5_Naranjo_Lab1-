@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Heart } from 'lucide-react';
+import { ArrowLeft, Heart } from 'lucide-react';
+import { appTheme } from '../theme';
+import { supabase } from '../supabaseClient';
+import { getStoredProfile } from '../utils/profileHelpers';
 
 const RequestItem = () => {
   const navigate = useNavigate();
@@ -9,47 +12,50 @@ const RequestItem = () => {
     duration: '',
     gratitude: ''
   });
+  const { userName, profilePic } = getStoredProfile();
 
   const colors = { 
-    primaryTeal: '#1A5F7A', 
-    mintAccent: '#57C5B6', 
+    primaryTeal: appTheme.primary, 
+    mintAccent: appTheme.accent, 
     softBg: '#F0F9F8',
     border: '#D1E5E2' 
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // 1. Get current user
-    const currentUser = localStorage.getItem("userName") || "Guest";
 
-    // 2. Create the new request
-    const newRequest = {
-      id: Date.now(),
-      user: currentUser,
-      need: formData.need,
-      duration: formData.duration,
-      gratitude: formData.gratitude
+    const payload = {
+      username: userName || 'Guest',
+      need: formData.need.trim(),
+      duration: formData.duration.trim(),
+      gratitude: formData.gratitude.trim(),
     };
+    const payloadWithProfile = profilePic ? { ...payload, profile_pic: profilePic } : payload;
 
-    // 3. Save to SHARED KEY: "communityRequests"
-    const existing = JSON.parse(localStorage.getItem("communityRequests") || "[]");
-    const updated = [...existing, newRequest];
-    
-    localStorage.setItem("communityRequests", JSON.stringify(updated));
-    
-    // Debug log to confirm it's working
-    console.log("Successfully saved to communityRequests:", updated);
+    let { error } = await supabase.from('Kin').insert([payloadWithProfile]);
+    const shouldRetryWithoutAvatar = error?.message?.toLowerCase().includes('profile_pic')
+      || error?.details?.toLowerCase().includes('profile_pic')
+      || error?.hint?.toLowerCase().includes('profile_pic');
+
+    if (shouldRetryWithoutAvatar) {
+      ({ error } = await supabase.from('Kin').insert([payload]));
+    }
+
+    if (error) {
+      console.error('Could not post request', error);
+      alert('Could not post your request right now.');
+      return;
+    }
 
     alert("Request posted successfully!");
-    navigate('/borrow'); // Navigate to your Hub
+    navigate('/borrow');
   };
 
   return (
-    <div style={{ background: colors.softBg, minHeight: '100vh', padding: '2rem', fontFamily: 'Inter, sans-serif' }}>
-      <div style={{ maxWidth: '450px', margin: '0 auto', background: 'white', padding: '2.5rem', borderRadius: '32px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
+    <div style={{ background: appTheme.shellBackground, minHeight: '100vh', padding: '2rem', fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ maxWidth: '450px', margin: '0 auto', background: appTheme.card, padding: '2.5rem', borderRadius: '32px', boxShadow: '0 16px 38px rgba(0,0,0,0.12)', border: '1px solid rgba(255,255,255,0.86)' }}>
         
-        <button onClick={() => navigate('/dashboard')} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#6A8E8A', marginBottom: '1.5rem', fontWeight: 'bold' }}>
+        <button onClick={() => navigate('/dashboard')} style={{ background: 'rgba(255,255,255,0.92)', border: '1px solid rgba(255,255,255,0.88)', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#1A5F7A', marginBottom: '1.5rem', fontWeight: 'bold', padding: '12px 16px', borderRadius: '18px' }}>
           <ArrowLeft size={18} /> Back
         </button>
 
@@ -78,7 +84,7 @@ const RequestItem = () => {
             style={{ padding: '12px', borderRadius: '10px', border: `1px solid ${colors.border}` }}
             onChange={(e) => setFormData({...formData, gratitude: e.target.value})}
           />
-          <button type="submit" style={{ background: colors.primaryTeal, color: 'white', border: 'none', padding: '15px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' }}>
+          <button type="submit" style={{ background: appTheme.button, color: 'white', border: 'none', padding: '15px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', boxShadow: '0 14px 30px rgba(15,76,129,0.18)' }}>
             POST REQUEST
           </button>
         </form>

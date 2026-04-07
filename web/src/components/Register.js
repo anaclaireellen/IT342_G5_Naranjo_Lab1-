@@ -1,16 +1,37 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { User, Mail, Lock, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import axios from 'axios';
+import ConfirmDialog from './ConfirmDialog';
+
+const buildUsernamePreview = (firstName, lastName) => {
+  const normalize = (value) => value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+
+  const first = normalize(firstName.trim());
+  const last = normalize(lastName.trim());
+
+  if (!first || !last) return 'firstname.lastname';
+  return `${first}.${last}`;
+};
+
+const buildEmailPreview = (firstName, lastName) => `${buildUsernamePreview(firstName, lastName)}@cit.edu`;
 
 const Register = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    username: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [registeredUsername, setRegisteredUsername] = useState('');
+  const [errorText, setErrorText] = useState('');
 
   const colors = {
     primaryTeal: '#1A5F7A',
@@ -21,26 +42,30 @@ const Register = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    setErrorText('');
 
     if (formData.password !== formData.confirmPassword) {
-      return alert('Passwords do not match');
+      setErrorText('Passwords do not match.');
+      return;
     }
 
     try {
+      const generatedEmail = buildEmailPreview(formData.firstName, formData.lastName);
       const response = await axios.post('http://localhost:8080/api/auth/register', {
-        username: formData.username,
-        email: formData.email,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: generatedEmail,
         password: formData.password,
         role: 'STUDENT'
       });
 
       if (response.status === 200 || response.status === 201) {
-        alert('Registration successful.');
-        navigate('/login');
+        setRegisteredUsername(response.data?.username || buildUsernamePreview(formData.firstName, formData.lastName));
+        setShowSuccessDialog(true);
       }
     } catch (error) {
       console.error('Registration Error:', error);
-      alert(error.response?.data?.message || 'Connection failed. Is the server running?');
+      setErrorText(error.response?.data?.message || 'Connection failed. Is the server running?');
     }
   };
 
@@ -61,7 +86,7 @@ const Register = () => {
   return (
     <div
       style={{
-        background: 'linear-gradient(160deg, #F7FBFF 0%, #EEF7F9 45%, #E9F6F4 100%)',
+        background: 'linear-gradient(155deg, #0E456F 0%, #1B6B88 48%, #63CABB 100%)',
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
@@ -72,7 +97,7 @@ const Register = () => {
     >
       <div
         style={{
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,251,255,0.92) 100%)',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.95) 100%)',
           padding: '2.5rem',
           borderRadius: '32px',
           width: '90%',
@@ -86,14 +111,38 @@ const Register = () => {
         </h2>
 
         <form style={{ display: 'flex', flexDirection: 'column', gap: '12px' }} onSubmit={handleRegister}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={inputContainerStyle}>
+              <User size={18} style={iconStyle} />
+              <input
+                type="text"
+                placeholder="First Name"
+                style={inputStyle}
+                required
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+              />
+            </div>
+
+            <div style={inputContainerStyle}>
+              <User size={18} style={iconStyle} />
+              <input
+                type="text"
+                placeholder="Family Name"
+                style={inputStyle}
+                required
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+              />
+            </div>
+          </div>
+
           <div style={inputContainerStyle}>
             <User size={18} style={iconStyle} />
             <input
               type="text"
-              placeholder="Username"
+              placeholder="Username will be generated"
               style={inputStyle}
-              required
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              value={buildUsernamePreview(formData.firstName, formData.lastName)}
+              readOnly
             />
           </div>
 
@@ -101,12 +150,16 @@ const Register = () => {
             <Mail size={18} style={iconStyle} />
             <input
               type="email"
-              placeholder="Email (@cit.edu)"
+              placeholder="Email will be generated"
               style={inputStyle}
-              required
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              value={buildEmailPreview(formData.firstName, formData.lastName)}
+              readOnly
             />
           </div>
+
+          <p style={{ margin: '-2px 4px 2px', fontSize: '12px', color: '#6B7B8F', lineHeight: 1.55 }}>
+            Your login email is generated from your username in the format `username@cit.edu`.
+          </p>
 
           <div style={inputContainerStyle}>
             <Lock size={18} style={iconStyle} />
@@ -149,6 +202,12 @@ const Register = () => {
           </button>
         </form>
 
+        {errorText && (
+          <div style={{ marginTop: '14px', padding: '12px 14px', borderRadius: '14px', background: '#FFF1F2', border: '1px solid rgba(251,113,133,0.22)', color: '#BE123C', fontSize: '13px', fontWeight: '600', lineHeight: 1.5 }}>
+            {errorText}
+          </div>
+        )}
+
         <p onClick={() => navigate('/login')} style={{ color: '#6A8E8A', marginTop: '1.5rem', cursor: 'pointer', textAlign: 'center', fontSize: '0.9rem' }}>
           Already a member? <span style={{ color: colors.primaryTeal, fontWeight: '700' }}>Log in</span>
         </p>
@@ -170,6 +229,18 @@ const Register = () => {
           <ArrowLeft size={12} /> Back to home
         </p>
       </div>
+
+      <ConfirmDialog
+        open={showSuccessDialog}
+        title="Account ready"
+        message={`You can now sign in with ${registeredUsername ? `${registeredUsername}@cit.edu` : 'your new CIT email'}.`}
+        confirmLabel="Go to login"
+        cancelLabel="Stay here"
+        onConfirm={() => navigate('/login')}
+        onCancel={() => setShowSuccessDialog(false)}
+        tone="success"
+        icon={CheckCircle2}
+      />
     </div>
   );
 };

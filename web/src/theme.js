@@ -1,0 +1,16 @@
+export const appTheme = {
+  background: 'linear-gradient(155deg, #0E456F 0%, #1B6B88 48%, #63CABB 100%)',
+  shellBackground: 'radial-gradient(circle at top left, rgba(255,255,255,0.16), transparent 20%), radial-gradient(circle at bottom right, rgba(255,255,255,0.12), transparent 22%), linear-gradient(145deg, #0B3B66 0%, #155D87 44%, #1A5F7A 72%, #57C5B6 100%)',
+  primary: '#1A5F7A',
+  primaryStrong: '#0F4C81',
+  accent: '#57C5B6',
+  text: '#0F172A',
+  textMuted: '#64748B',
+  textSoft: '#94A3B8',
+  border: '#D9E5F0',
+  card: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.94) 100%)',
+  cardAlt: 'linear-gradient(135deg, #F4FAFF 0%, #EEF7F9 100%)',
+  shadow: '0 24px 48px rgba(15,23,42,0.12)',
+  shadowSoft: '0 14px 30px rgba(15,76,129,0.08)',
+  button: 'linear-gradient(135deg, #0F4C81 0%, #1A5F7A 58%, #57C5B6 100%)',
+};

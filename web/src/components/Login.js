@@ -4,6 +4,14 @@ import { Mail, Lock, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { persistProfile } from '../utils/profileHelpers';
 
+const normalizeLoginIdentifier = (value) => {
+  const normalized = (value || '').trim().toLowerCase();
+  if (!normalized) return '';
+  if (normalized.endsWith('@cit.edu')) return normalized;
+  if (normalized.includes('@')) return normalized;
+  return `${normalized}@cit.edu`;
+};
+
 const Login = ({ setAuth }) => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -19,14 +27,17 @@ const Login = ({ setAuth }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
+      const normalizedEmail = normalizeLoginIdentifier(email);
       const response = await axios.post('http://localhost:8080/api/auth/login', {
-        email: email,
+        email: normalizedEmail,
         password: password
       });
 
       if (response.status === 200) {
         persistProfile({
           userName: response.data.username,
+          firstName: response.data.firstName || '',
+          lastName: response.data.lastName || '',
           userRole: response.data.role,
           userEmail: response.data.email,
           profilePic: response.data.profilePic || '',
@@ -55,7 +66,7 @@ const Login = ({ setAuth }) => {
   return (
     <div
       style={{
-        background: 'linear-gradient(160deg, #F7FBFF 0%, #EEF7F9 45%, #E9F6F4 100%)',
+        background: 'linear-gradient(155deg, #0E456F 0%, #1B6B88 48%, #63CABB 100%)',
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
@@ -66,7 +77,7 @@ const Login = ({ setAuth }) => {
     >
       <div
         style={{
-          background: 'linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,251,255,0.92) 100%)',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.95) 100%)',
           padding: '3rem',
           borderRadius: '32px',
           width: '90%',
@@ -98,14 +109,18 @@ const Login = ({ setAuth }) => {
           <div style={{ position: 'relative' }}>
             <Mail size={18} style={{ position: 'absolute', left: '15px', top: '15px', color: colors.mintAccent }} />
             <input
-              type="email"
-              placeholder="University Email"
+              type="text"
+              placeholder="username@cit.edu"
               style={inputStyle}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
+
+          <p style={{ margin: '-4px 4px 0', fontSize: '12px', color: '#6B7B8F', lineHeight: 1.55 }}>
+            Use your generated KIN login email in the format `username@cit.edu`.
+          </p>
 
           <div style={{ position: 'relative' }}>
             <Lock size={18} style={{ position: 'absolute', left: '15px', top: '15px', color: colors.mintAccent }} />
