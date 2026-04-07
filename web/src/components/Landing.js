@@ -6,16 +6,16 @@ const Landing = () => {
   const navigate = useNavigate();
 
   return (
-    <div style={{ minHeight: '100vh', background: 'radial-gradient(circle at top left, rgba(87,197,182,0.22), transparent 28%), radial-gradient(circle at bottom right, rgba(15,76,129,0.18), transparent 30%), linear-gradient(180deg, #F8FBFF 0%, #EDF5FB 100%)', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', padding: '28px' }}>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(155deg, #0E456F 0%, #1B6B88 48%, #63CABB 100%)', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', padding: '28px' }}>
       <div style={{ maxWidth: '1180px', margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
           <img src={process.env.PUBLIC_URL + '/citu-logo.png'} alt="Kin Logo" style={{ width: '138px', height: 'auto' }} />
         </div>
 
-        <div style={{ background: 'rgba(255,255,255,0.8)', border: '1px solid rgba(255,255,255,0.9)', borderRadius: '40px', boxShadow: '0 30px 80px rgba(15,23,42,0.08)', backdropFilter: 'blur(24px)', overflow: 'hidden' }}>
+        <div style={{ background: 'rgba(255,255,255,0.94)', border: '1px solid rgba(255,255,255,0.92)', borderRadius: '40px', boxShadow: '0 30px 80px rgba(15,23,42,0.18)', backdropFilter: 'blur(24px)', overflow: 'hidden' }}>
           <div style={{ padding: '56px 48px', display: 'grid', gridTemplateColumns: '1.25fr 0.95fr', gap: '34px', alignItems: 'stretch' }}>
             <div>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '999px', background: 'rgba(15,76,129,0.08)', color: '#1A5F7A', fontWeight: '700', marginBottom: '20px' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 14px', borderRadius: '999px', background: 'rgba(15,76,129,0.1)', color: '#1A5F7A', fontWeight: '700', marginBottom: '20px' }}>
                 <Sparkles size={16} /> Student support, thoughtfully designed
               </div>
               <h1 style={{ fontSize: '4.4rem', lineHeight: 0.98, letterSpacing: '-0.05em', margin: '0 0 18px', color: '#0F172A' }}>KIN helps students borrow, connect, and support one another.</h1>
@@ -46,9 +46,9 @@ const Landing = () => {
               </div>
             </div>
 
-            <div style={{ background: 'linear-gradient(160deg, rgba(15,76,129,0.98) 0%, rgba(26,95,122,0.94) 58%, rgba(87,197,182,0.86) 100%)', color: 'white', borderRadius: '34px', padding: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 28px 56px rgba(15,76,129,0.22)' }}>
+            <div style={{ background: 'linear-gradient(160deg, #F4FAFF 0%, #EEF7F9 100%)', color: '#0F172A', borderRadius: '34px', padding: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 18px 34px rgba(15,76,129,0.08)', border: '1px solid rgba(226,232,240,0.9)' }}>
               <div>
-                <p style={{ margin: 0, opacity: 0.76, textTransform: 'uppercase', letterSpacing: '0.14em', fontSize: '12px' }}>Why students use KIN</p>
+                <p style={{ margin: 0, opacity: 0.76, textTransform: 'uppercase', letterSpacing: '0.14em', fontSize: '12px', color: '#64748B' }}>Why students use KIN</p>
                 <h2 style={{ margin: '12px 0 0', fontSize: '2rem', lineHeight: 1.1 }}>A more organized way to ask for help and respond with care.</h2>
               </div>
               <div style={{ display: 'grid', gap: '12px' }}>
@@ -57,7 +57,7 @@ const Landing = () => {
                   'Messages can begin directly from the community hub.',
                   'Your profile remains visible across posts, chats, and settings.'
                 ].map((text) => (
-                  <div key={text} style={{ padding: '16px 18px', borderRadius: '20px', background: 'rgba(255,255,255,0.14)', border: '1px solid rgba(255,255,255,0.18)', lineHeight: 1.6 }}>
+                  <div key={text} style={{ padding: '16px 18px', borderRadius: '20px', background: 'rgba(15,76,129,0.06)', border: '1px solid rgba(226,232,240,0.9)', lineHeight: 1.6, color: '#475569' }}>
                     {text}
                   </div>
                 ))}

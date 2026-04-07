@@ -2,13 +2,40 @@ import React, { useState } from 'react';
 import { Camera, User, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import axios from 'axios';
 import { supabase } from '../supabaseClient';
-import { persistProfile } from '../utils/profileHelpers';
+import { getStoredProfile, persistProfile } from '../utils/profileHelpers';
+import { appTheme } from '../theme';
+
+const buildUsernamePreview = (firstName, lastName) => {
+  const normalize = (value) => value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+
+  const first = normalize((firstName || '').trim());
+  const last = normalize((lastName || '').trim());
+
+  if (!first || !last) return 'firstname.lastname';
+  return `${first}.${last}`;
+};
+
+const Group = ({ title, children, textSecondary }) => (
+  <div style={{ marginBottom: '26px' }}>
+    <p style={{ fontSize: '12px', color: textSecondary, marginLeft: '16px', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.14em', fontWeight: '700' }}>{title}</p>
+    <div style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.95) 100%)', borderRadius: '24px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px', border: '1px solid rgba(226,232,240,0.72)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7)' }}>
+      {children}
+    </div>
+  </div>
+);
 
 const ProfileSettings = () => {
-  const initialName = localStorage.getItem("userName") || "";
+  const sessionProfile = getStoredProfile();
+  const initialName = sessionProfile.userName || "";
+  const [firstName, setFirstName] = useState(sessionProfile.firstName || "");
+  const [lastName, setLastName] = useState(sessionProfile.lastName || "");
+  const [email, setEmail] = useState(sessionProfile.userEmail || "");
   const [savedUsername, setSavedUsername] = useState(initialName);
-  const [username, setUsername] = useState(initialName);
-  const [profilePic, setProfilePic] = useState(localStorage.getItem("profilePic") || "");
+  const [profilePic, setProfilePic] = useState(sessionProfile.profilePic || "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [message, setMessage] = useState({ text: "", type: "" });
@@ -28,49 +55,63 @@ const ProfileSettings = () => {
     setIsSaving(true);
 
     try {
-      await axios.put('http://localhost:8080/api/auth/user/update', {
+      const response = await axios.put('http://localhost:8080/api/auth/user/update', {
         email: localStorage.getItem("userEmail"),
-        username,
+        newEmail: email,
+        firstName,
+        lastName,
         currentPassword,
         newPassword,
         profilePic
       });
+      const nextUsername = response.data?.username || savedUsername;
+      const nextEmail = response.data?.email || email;
 
-      if (savedUsername !== username) {
+      if (savedUsername !== nextUsername) {
         await Promise.all([
-          supabase.from('Kin').update({ username }).eq('username', savedUsername),
-          supabase.from('messages').update({ sender_username: username }).eq('sender_username', savedUsername),
-          supabase.from('messages').update({ receiver_username: username }).eq('receiver_username', savedUsername),
+          supabase.from('Kin').update({ username: nextUsername }).eq('username', savedUsername),
+          supabase.from('messages').update({ sender_username: nextUsername }).eq('sender_username', savedUsername),
+          supabase.from('messages').update({ receiver_username: nextUsername }).eq('receiver_username', savedUsername),
         ]);
       }
 
+      if (savedUsername !== nextUsername || profilePic !== (sessionProfile.profilePic || '')) {
+        const kinAvatarUpdate = await supabase.from('Kin').update({ profile_pic: profilePic || '' }).eq('username', nextUsername);
+        const messageAvatarUpdate = await supabase.from('messages').update({ sender_profile_pic: profilePic || '' }).eq('sender_username', nextUsername);
+        const avatarColumnMissing = [kinAvatarUpdate.error, messageAvatarUpdate.error].some((entry) =>
+          entry?.message?.toLowerCase().includes('profile_pic')
+          || entry?.message?.toLowerCase().includes('sender_profile_pic')
+          || entry?.details?.toLowerCase().includes('profile_pic')
+          || entry?.hint?.toLowerCase().includes('profile_pic')
+        );
+
+        if (!avatarColumnMissing) {
+          if (kinAvatarUpdate.error) throw kinAvatarUpdate.error;
+          if (messageAvatarUpdate.error) throw messageAvatarUpdate.error;
+        }
+      }
+
       persistProfile({
-        userName: username,
-        userEmail: localStorage.getItem("userEmail") || '',
+        userName: nextUsername,
+        firstName,
+        lastName,
+        userEmail: nextEmail,
         userRole: localStorage.getItem("userRole") || 'Student',
         profilePic: profilePic || '',
       });
 
-      setSavedUsername(username);
-      setMessage({ text: "Settings saved successfully", type: "success" });
+      setSavedUsername(nextUsername);
+      setEmail(nextEmail);
+      setMessage({ text: "All set. Your profile was updated.", type: "success" });
       setCurrentPassword("");
       setNewPassword("");
     } catch (error) {
-      const errorText = error.response?.data?.message || "Verify your current password.";
+      const errorText = error.response?.data?.message || "Double-check your current password and try again.";
       setMessage({ text: errorText, type: "error" });
     } finally {
       setIsSaving(false);
     }
   };
-
-  const Group = ({ title, children }) => (
-    <div style={{ marginBottom: '26px' }}>
-      <p style={{ fontSize: '12px', color: colors.textSecondary, marginLeft: '16px', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.14em', fontWeight: '700' }}>{title}</p>
-      <div style={{ background: 'linear-gradient(180deg, #F8FAFF 0%, #F2F5FB 100%)', borderRadius: '24px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px', border: '1px solid rgba(226,232,240,0.72)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7)' }}>
-        {children}
-      </div>
-    </div>
-  );
 
   const inputStyle = {
     width: '100%',
@@ -85,7 +126,7 @@ const ProfileSettings = () => {
 
   return (
     <div style={{ maxWidth: '760px', margin: '0 auto', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}>
-      <header style={{ textAlign: 'center', marginBottom: '30px', padding: '38px', borderRadius: '36px', background: 'linear-gradient(135deg, #0B3B66 0%, #155D87 45%, #1A5F7A 70%, #57C5B6 100%)', color: 'white', boxShadow: '0 32px 68px rgba(15,76,129,0.2)', position: 'relative', overflow: 'hidden' }}>
+      <header style={{ textAlign: 'center', marginBottom: '30px', padding: '38px', borderRadius: '36px', background: appTheme.button, color: 'white', boxShadow: '0 32px 68px rgba(15,76,129,0.2)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at top left, rgba(255,255,255,0.16), transparent 28%), radial-gradient(circle at bottom right, rgba(255,255,255,0.12), transparent 24%)' }} />
         <div style={{ position: 'relative' }}>
         <div style={{ width: '112px', height: '112px', borderRadius: '38px', margin: '0 auto 16px', overflow: 'hidden', background: 'rgba(255,255,255,0.18)', position: 'relative', border: '1px solid rgba(255,255,255,0.28)', backdropFilter: 'blur(14px)', boxShadow: '0 18px 34px rgba(0,0,0,0.12)' }}>
@@ -100,8 +141,8 @@ const ProfileSettings = () => {
             }} />
           </label>
         </div>
-        <h2 style={{ fontSize: '32px', fontWeight: '800', margin: 0 }}>Account Settings</h2>
-        <p style={{ margin: '10px 0 0', opacity: 0.88, maxWidth: '520px', marginInline: 'auto', lineHeight: 1.7 }}>Update your identity once and let it appear across your posts and chats.</p>
+        <h2 style={{ fontSize: '32px', fontWeight: '800', margin: 0 }}>Your profile</h2>
+        <p style={{ margin: '10px 0 0', opacity: 0.88, maxWidth: '520px', marginInline: 'auto', lineHeight: 1.7 }}>Change your name, photo, or password here and it'll show up across your posts and chats.</p>
         </div>
       </header>
 
@@ -111,32 +152,46 @@ const ProfileSettings = () => {
         </div>
       )}
 
-      <form onSubmit={handleUpdate} style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(248,251,255,0.88) 100%)', borderRadius: '34px', padding: '30px', border: '1px solid rgba(226,232,240,0.85)', boxShadow: '0 24px 48px rgba(15,23,42,0.06)' }}>
-        <Group title="Public Profile">
+      <form onSubmit={handleUpdate} style={{ background: appTheme.card, borderRadius: '34px', padding: '30px', border: '1px solid rgba(255,255,255,0.86)', boxShadow: '0 24px 48px rgba(15,23,42,0.06)' }}>
+        <Group title="Public profile" textSecondary={colors.textSecondary}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: '600', color: colors.primary }}>FIRST NAME</label>
+              <input style={inputStyle} value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: '600', color: colors.primary }}>FAMILY NAME</label>
+              <input style={inputStyle} value={lastName} onChange={(e) => setLastName(e.target.value)} />
+            </div>
+          </div>
           <div>
-            <label style={{ fontSize: '11px', fontWeight: '600', color: colors.primary }}>DISPLAY NAME</label>
-            <input style={inputStyle} value={username} onChange={(e) => setUsername(e.target.value)} />
+            <label style={{ fontSize: '11px', fontWeight: '600', color: colors.primary }}>USERNAME</label>
+            <input style={inputStyle} value={buildUsernamePreview(firstName, lastName)} readOnly />
+          </div>
+          <div>
+            <label style={{ fontSize: '11px', fontWeight: '600', color: colors.primary }}>LOGIN EMAIL</label>
+            <input type="email" style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
         </Group>
 
-        <Group title="Security & Passwords">
+        <Group title="Password stuff" textSecondary={colors.textSecondary}>
           <div>
             <label style={{ fontSize: '11px', fontWeight: '600', color: colors.primary }}>CURRENT PASSWORD</label>
-            <input type="password" placeholder="Required to save" style={inputStyle} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+            <input type="password" placeholder="Needed before saving" style={inputStyle} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
           </div>
           <div>
             <label style={{ fontSize: '11px', fontWeight: '600', color: colors.primary }}>NEW PASSWORD</label>
-            <input type="password" placeholder="Leave blank to keep current" style={inputStyle} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+            <input type="password" placeholder="Leave this empty if you're keeping the same one" style={inputStyle} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
           </div>
         </Group>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 18px', borderRadius: '22px', background: 'linear-gradient(180deg, #F8FAFC 0%, #F2F7FB 100%)', marginTop: '8px', marginBottom: '18px', border: '1px solid rgba(226,232,240,0.8)' }}>
           <ShieldCheck size={20} color={colors.primary} />
-          <p style={{ margin: 0, fontSize: '14px', color: '#475569', lineHeight: 1.5 }}>Saving your profile updates your account and syncs your identity on your messages and community posts.</p>
+          <p style={{ margin: 0, fontSize: '14px', color: '#475569', lineHeight: 1.5 }}>When you save here, your updated name and photo also carry over to your messages and community posts.</p>
         </div>
 
-        <button type="submit" disabled={isSaving} style={{ width: '100%', padding: '17px', background: 'linear-gradient(135deg, #0B3B66 0%, #155D87 45%, #1A5F7A 70%, #57C5B6 100%)', color: 'white', border: 'none', borderRadius: '22px', fontSize: '17px', fontWeight: '700', cursor: isSaving ? 'default' : 'pointer', marginTop: '10px', boxShadow: '0 22px 40px rgba(15,76,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-          <CheckCircle2 size={18} /> {isSaving ? 'Saving...' : 'Update Profile'}
+        <button type="submit" disabled={isSaving} style={{ width: '100%', padding: '17px', background: appTheme.button, color: 'white', border: 'none', borderRadius: '22px', fontSize: '17px', fontWeight: '700', cursor: isSaving ? 'default' : 'pointer', marginTop: '10px', boxShadow: '0 22px 40px rgba(15,76,129,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+          <CheckCircle2 size={18} /> {isSaving ? 'Saving...' : 'Save changes'}
         </button>
       </form>
     </div>
